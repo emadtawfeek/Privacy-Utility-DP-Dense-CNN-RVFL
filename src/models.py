@@ -184,6 +184,7 @@ class RVFLNet(nn.Module):
         activation: str = "tanh",
         seed: int = 42,
         max_input_dim: int = 1024,
+        direct_link: bool = True,
     ) -> None:
         super().__init__()
         original_dim = _flatten_dim(input_shape)
@@ -213,7 +214,7 @@ class RVFLNet(nn.Module):
             parameter.requires_grad = False
 
         self.output_layer = nn.Linear(
-            input_dim + n_random_features,
+            (input_dim if direct_link else 0) + n_random_features,
             _binary_output_dim(task_type, num_classes),
         )
         self.task_type = task_type
@@ -221,6 +222,7 @@ class RVFLNet(nn.Module):
         self.n_random_features = n_random_features
         self.reduced_input_dim = input_dim
         self.original_input_dim = original_dim
+        self.direct_link = direct_link
 
     def activation(self, values: torch.Tensor) -> torch.Tensor:
         if self.activation_name == "relu":
@@ -238,8 +240,31 @@ class RVFLNet(nn.Module):
         reduced = self.input_reducer(flat)
         with torch.no_grad():
             hidden = self.activation(self.random_layer(reduced))
-        concatenated = torch.cat([reduced, hidden], dim=1)
+        concatenated = torch.cat([reduced, hidden], dim=1) if self.direct_link else hidden
         outputs = self.output_layer(concatenated)
+        return outputs.squeeze(-1) if self.task_type == "binary" else outputs
+
+
+class LinearClassifier(nn.Module):
+    """Logistic/softmax regression, with optional data-independent projection."""
+
+    def __init__(self, input_shape, task_type, num_classes, seed=42, max_input_dim=None):
+        super().__init__()
+        self.original_input_dim = _flatten_dim(input_shape)
+        self.reduced_input_dim = min(self.original_input_dim, max_input_dim or self.original_input_dim)
+        self.input_reducer = nn.Identity()
+        if self.original_input_dim > self.reduced_input_dim:
+            with torch.random.fork_rng(devices=[]):
+                torch.manual_seed(seed)
+                self.input_reducer = nn.Linear(self.original_input_dim, self.reduced_input_dim, bias=False)
+                nn.init.normal_(self.input_reducer.weight, std=1.0 / self.reduced_input_dim**0.5)
+            self.input_reducer.requires_grad_(False)
+        self.output_layer = nn.Linear(self.reduced_input_dim, _binary_output_dim(task_type, num_classes))
+        self.task_type = task_type
+
+    def forward(self, inputs):
+        values = self.input_reducer(torch.flatten(inputs, start_dim=1))
+        outputs = self.output_layer(values)
         return outputs.squeeze(-1) if self.task_type == "binary" else outputs
 
 
@@ -256,6 +281,7 @@ def build_model(
     rvfl_activation: str = "tanh",
     paper_profile: str = "default",
     pca_projection: torch.Tensor | None = None,
+    max_input_dim: int = 1024,
 ) -> tuple[nn.Module, ModelSpec]:
     """Construct a model and its reporting metadata."""
     private_prefix = "DP-" if privacy == "private" else ""
@@ -292,17 +318,30 @@ def build_model(
         else:
             model = FeatureCNN(input_shape, task_type)
             variant = "1D-CNN"
-    elif model_key == "rvfl":
+    elif model_key in {"rvfl", "elm", "frozen_dense"}:
+        reduced_dim = min(_flatten_dim(input_shape), max_input_dim)
+        hidden_width = n_random_features + (reduced_dim if model_key == "frozen_dense" else 0)
         model = RVFLNet(
             input_shape=input_shape,
             task_type=task_type,
             num_classes=num_classes,
-            n_random_features=n_random_features,
+            n_random_features=hidden_width,
             activation=rvfl_activation,
             seed=seed,
+            max_input_dim=max_input_dim,
+            direct_link=model_key == "rvfl",
         )
-        family = "RVFL"
-        variant = "Frozen-random-feature RVFL"
+        family = {"rvfl": "RVFL", "elm": "ELM-SGD", "frozen_dense": "FrozenDenseMatched"}[model_key]
+        variant = {
+            "rvfl": "Frozen-random-feature RVFL with direct link",
+            "elm": "Same-width no-direct-link ablation trained with DP-SGD",
+            "frozen_dense": "Frozen single-layer Dense with head parameter count matched to RVFL",
+        }[model_key]
+    elif model_key in {"logistic", "logistic_raw"}:
+        model = LinearClassifier(input_shape, task_type, num_classes, seed,
+                                 max_input_dim if model_key == "logistic" else None)
+        family = "LogisticProjected" if model_key == "logistic" else "LogisticRaw"
+        variant = "Binary logistic / multiclass softmax regression"
     else:
         raise ValueError(f"Unsupported model key: {model_key}")
 

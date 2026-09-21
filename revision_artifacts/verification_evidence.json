@@ -1,0 +1,145 @@
+{
+  "unit_tests_passed": 23,
+  "metadata_modes_passed": [
+    "development",
+    "secure"
+  ],
+  "smoke_runs": 72,
+  "smoke_failures": 0,
+  "smoke_figures": 12,
+  "private_sgd_runs": 28,
+  "private_dpelm_runs": 8,
+  "nonprivate_runs": 36,
+  "smoke_manifest_sha256": "221497ae5b6e429de4fe0144b5873d0b0ef8eb3bab31c40815928647483d1446",
+  "full_manifest_sha256": "843f3f59df0aea9eece9ed77cde9aedff06a3c95e2bca4808d042d771256c8a6",
+  "full_task_count": 1540,
+  "full_runs_completed": 0,
+  "source_changes": [
+    {
+      "file": "src/dpelm.py",
+      "change": "added",
+      "sha256": "136fb9796d3a9a663f7bf3a2e04f6e15e05582c79ea7f55da693a23bea73d107"
+    },
+    {
+      "file": "src/models.py",
+      "change": "modified",
+      "sha256": "61386a077d3480304576d178d4aacd5c061a04104c715a030397388703447d06"
+    },
+    {
+      "file": "src/revision_data.py",
+      "change": "added",
+      "sha256": "8ad3c3b7609ff824929b2831572f82166e9b952a1408fd7c73f56c0d95f124ef"
+    },
+    {
+      "file": "src/revision_statistics.py",
+      "change": "added",
+      "sha256": "b8b7181a199b4cf4e554e406f10f10d96bf9557bb3f60afc8ea71731b0463535"
+    },
+    {
+      "file": "src/revision_training.py",
+      "change": "added",
+      "sha256": "31593f3d50094ea303bb8eb2a7486c865875becbaaa02739417255ccedc6b257"
+    },
+    {
+      "file": "src/run_experiments.py",
+      "change": "modified",
+      "sha256": "390831005f51bcace502a32cf73d3d69ca5d74a7af5d91c455fe9c5c3c1d7dae"
+    },
+    {
+      "file": "src/run_revisions.py",
+      "change": "added",
+      "sha256": "fb1dea42a52604b7d7e1d9ed71402561100d9feb6558c5f195b018f5e00c09d7"
+    },
+    {
+      "file": "src/train_nonprivate.py",
+      "change": "modified",
+      "sha256": "c8f06d727143a470e77e0932eb5ea8e0da7b667f0cb82d7068527425371c52b4"
+    },
+    {
+      "file": "src/train_private.py",
+      "change": "modified",
+      "sha256": "7de7444fc01a28641641644f5451437604a0647678ea24733dd79d020d9812d6"
+    },
+    {
+      "file": "tests/smoke_test_dp_metadata.py",
+      "change": "modified",
+      "sha256": "4d0e7fb210ad91b43140672137f3f1c244c41ec2e254711f8d8c4148aa82226c"
+    },
+    {
+      "file": "tests/test_reviewer_revision.py",
+      "change": "added",
+      "sha256": "bc431b7071f6ad1cf496f0cba51845b0234470e5d4fbb55e25296b40f88720b0"
+    }
+  ],
+  "environment": {
+    "numpy": "2.0.2",
+    "opacus": "1.5.4",
+    "pandas": "2.2.3",
+    "scikit-learn": "1.6.0",
+    "scipy": "1.15.0",
+    "torch": "2.4.1",
+    "torchvision": "0.19.1"
+  },
+  "python": "3.12.5 (tags/v3.12.5:ff3bc82, Aug  6 2024, 20:45:27) [MSC v.1940 64 bit (AMD64)]",
+  "backup_sha256": "c053ffb0603aed31b48dc5e813875084d2076245eba3314afeb0e90646d06ba4",
+  "dataset_sizes": {
+    "cardio": {
+      "train_size": 48025,
+      "validation_size": 10291,
+      "test_size": 10292
+    },
+    "cifar10": {
+      "train_size": 42500,
+      "validation_size": 7500,
+      "test_size": 10000
+    },
+    "heart": {
+      "train_size": 212,
+      "validation_size": 45,
+      "test_size": 46
+    },
+    "mnist": {
+      "train_size": 51000,
+      "validation_size": 9000,
+      "test_size": 10000
+    }
+  },
+  "rvfl_smoke_accounting": [
+    {
+      "dataset": "cardio",
+      "n_train": 128,
+      "sample_rate": 1.0,
+      "steps_completed": 1,
+      "noise_multiplier": 2.149200439453125,
+      "epsilon_achieved": 1.999907405084802,
+      "trainable_parameters": 233
+    },
+    {
+      "dataset": "cifar10",
+      "n_train": 128,
+      "sample_rate": 1.0,
+      "steps_completed": 1,
+      "noise_multiplier": 2.149200439453125,
+      "epsilon_achieved": 1.999907405084802,
+      "trainable_parameters": 12250
+    },
+    {
+      "dataset": "heart",
+      "n_train": 128,
+      "sample_rate": 0.5,
+      "steps_completed": 2,
+      "noise_multiplier": 2.0423126220703125,
+      "epsilon_achieved": 1.9999250820399639,
+      "trainable_parameters": 248
+    },
+    {
+      "dataset": "mnist",
+      "n_train": 128,
+      "sample_rate": 1.0,
+      "steps_completed": 1,
+      "noise_multiplier": 2.149200439453125,
+      "epsilon_achieved": 1.999907405084802,
+      "trainable_parameters": 9850
+    }
+  ]
+}

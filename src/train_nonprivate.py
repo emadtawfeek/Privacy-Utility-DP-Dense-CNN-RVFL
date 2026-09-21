@@ -46,9 +46,12 @@ def _binary_pos_weight(dataset: Dataset) -> torch.Tensor:
     return torch.tensor(negatives / max(positives, 1.0), dtype=torch.float32)
 
 
-def make_criterion(task_type: str, train_dataset: Dataset) -> nn.Module:
+def make_criterion(task_type: str, train_dataset: Dataset, *, use_empirical_class_weights: bool = False) -> nn.Module:
+    """Unweighted loss by default: no unaccounted access to private class counts."""
     if task_type == "binary":
-        return nn.BCEWithLogitsLoss(pos_weight=_binary_pos_weight(train_dataset))
+        return nn.BCEWithLogitsLoss(
+            pos_weight=_binary_pos_weight(train_dataset) if use_empirical_class_weights else None
+        )
     return nn.CrossEntropyLoss()
 
 
@@ -56,11 +59,13 @@ def _make_optimizer(
     model: nn.Module,
     lr: float,
     optimizer_name: str,
+    weight_decay: float = 0.0,
+    sgd_momentum: float = 0.0,
 ) -> torch.optim.Optimizer:
     parameters = [parameter for parameter in model.parameters() if parameter.requires_grad]
     if optimizer_name == "sgd":
-        return torch.optim.SGD(parameters, lr=lr)
-    return torch.optim.Adam(parameters, lr=lr)
+        return torch.optim.SGD(parameters, lr=lr, weight_decay=weight_decay, momentum=sgd_momentum)
+    return torch.optim.Adam(parameters, lr=lr, weight_decay=weight_decay)
 
 
 def _lr_for_epoch(default_lr: float, lr_schedule: dict | None, epoch_index: int) -> float:
@@ -101,11 +106,13 @@ def train_nonprivate_model(
     num_workers: int,
     optimizer_name: str = "adam",
     lr_schedule: dict | None = None,
+    weight_decay: float = 0.0,
+    sgd_momentum: float = 0.0,
 ) -> TrainResult:
     """Train a model without differential privacy."""
     loader = make_loader(train_dataset, batch_size, True, seed, num_workers)
     criterion = make_criterion(task_type, train_dataset)
-    optimizer = _make_optimizer(model, lr, optimizer_name)
+    optimizer = _make_optimizer(model, lr, optimizer_name, weight_decay, sgd_momentum)
     start = time.perf_counter()
     epochs_completed = 0
     for epoch in range(epochs):

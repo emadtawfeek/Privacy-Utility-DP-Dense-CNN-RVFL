@@ -1,0 +1,25 @@
+# Datasets and generated experiment outputs
+/data/
+/outputs*/
+/results*/
+/dpsgd-original/
+*.pt
+*.pth
+
+# Python and environment caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+.env.*
+
+# Local backups, report renderings and runtime diagnostics
+*.zip
+*.log
+/revision_artifacts/report_qa/
+/revision_artifacts/*_log.txt
+~$*.docx
+.DS_Store
+Thumbs.db

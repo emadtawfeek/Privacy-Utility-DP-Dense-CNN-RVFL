@@ -822,6 +822,12 @@ def _validate_profile_choices(
 
 
 def main() -> int:
+    if "--legacy-protocol" not in sys.argv and not any(arg in sys.argv for arg in ["-h", "--help"]):
+        raise SystemExit("Historical protocol disabled by default. Use src/run_revisions.py for reviewer experiments. "
+                         "Add --legacy-protocol only for exploratory legacy runs; its preprocessing and validation "
+                         "are NOT covered by the revised training privacy claim.")
+    if "--legacy-protocol" in sys.argv:
+        sys.argv.remove("--legacy-protocol")
     args = _parser().parse_args()
     if args.paper_profile == "abadi2016":
         if args.dataset is None and args.datasets == ",".join(DEFAULT_DATASETS):

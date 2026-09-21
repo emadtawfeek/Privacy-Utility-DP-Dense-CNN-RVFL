@@ -1,0 +1,13 @@
+# Observed working environment: Python 3.12, Windows, CPU.
+# Secure runs also require a compatible torchcsprng build. Verified locally:
+# torchcsprng 0.3.0a0+13e04cd. This local build is not a portable PyPI pin.
+torch==2.4.1
+torchvision==0.19.1
+opacus==1.5.4
+numpy==2.0.2
+pandas==2.2.3
+scipy==1.15.0
+scikit-learn==1.6.0
+matplotlib==3.10.0
+joblib==1.4.2
+tqdm==4.67.1
