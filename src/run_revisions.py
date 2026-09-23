@@ -26,13 +26,14 @@ from dp_accounting import validate_secure_rng_available
 from dpelm import DPELM
 from evaluate import evaluate_from_probabilities, logits_to_probabilities, predict_logits
 from models import build_model, count_parameters
+from review_complexity import benchmark_forward_batch, estimate_forward_macs, parameter_storage_bytes
 from revision_data import load_revision_bundle
 from revision_statistics import write_analysis, write_figures
 from revision_training import train_private_model
 from train_nonprivate import make_loader, train_nonprivate_model
 
 MODEL_KEYS = ["dense", "cnn", "rvfl", "elm", "frozen_dense", "logistic", "logistic_raw", "dpelm"]
-PROTOCOL_VERSION = "reviewer_revision_v1"
+PROTOCOL_VERSION = "reviewer_revision_r3_v2"
 
 
 def json_safe(value):
@@ -93,10 +94,14 @@ def parser():
     p.add_argument("--smoke", action="store_true", help="One epoch, small data, one seed, epsilon 2 unless explicitly overridden")
     p.add_argument("--dry-run", action="store_true", help="Validate data and export a complete experiment manifest without training")
     p.add_argument("--resume", action="store_true", help="Reuse successful tasks only if configuration, code and data fingerprints match")
+    p.add_argument("--benchmark-diagnostics", action="store_true",
+                   help="Export per-epoch loss/gradient-clipping and forward latency for PUBLIC benchmarks only")
     return p
 
 
 def validate(args):
+    if args.benchmark_diagnostics and args.data_dir.resolve() != (PROJECT_ROOT / "data").resolve():
+        raise ValueError("Benchmark diagnostics require the bundled public data directory; do not export them from confidential data.")
     for name, cast in [("datasets", str), ("models", str), ("seeds", int), ("epsilons", float), ("dpelm_widths", int)]:
         setattr(args, name, _list(getattr(args, name), cast))
         if not getattr(args, name):
@@ -211,7 +216,13 @@ def run_task(task, bundle, args):
     row.update(model=name, trainable_parameters=trainable, total_parameters=total,
                frozen_parameters=frozen, fitted_coefficients=learned,
                parameter_count_definition="DPELM total includes buffers; fitted coefficients are solved, not gradient-trained",
-               hyperparameters=json.dumps(hp, sort_keys=True))
+               hyperparameters=json.dumps(hp, sort_keys=True),
+               estimated_forward_macs_per_record=estimate_forward_macs(model, bundle.input_shape),
+               parameter_storage_bytes=parameter_storage_bytes(model),
+               complexity_scope="linear_and_convolution_MACs_only_excludes_activation_memory_backward_and_DP_overheads",
+               majority_class_train=bundle.dataset_summary["majority_class_train"],
+               majority_baseline_test_accuracy=bundle.dataset_summary["majority_baseline_test_accuracy"],
+               diagnostic_release_scope="public_benchmark_only_not_in_training_DP_budget" if args.benchmark_diagnostics else "disabled")
     if key == "dpelm":
         row.update(model.fit(bundle.train_dataset, epsilon=task["epsilon"], seed=task["seed"], secure=not args.development))
     elif private:
@@ -221,13 +232,15 @@ def run_task(task, bundle, args):
             batch_size=hp["batch_size_requested"], num_workers=0, secure_mode=not args.development,
             rdp_alpha_mode=args.rdp_alpha_mode, optimizer_name=args.optimizer,
             sgd_momentum=args.momentum, weight_decay=args.weight_decay, accountant_name=args.accountant,
-            epsilon_tolerance=args.epsilon_tolerance, public_reference_size=len(bundle.train_dataset))
+            epsilon_tolerance=args.epsilon_tolerance, public_reference_size=len(bundle.train_dataset),
+            benchmark_diagnostics=args.benchmark_diagnostics)
         row.update(asdict(result))
     else:
         row.update(asdict(train_nonprivate_model(model=model, train_dataset=bundle.train_dataset,
             task_type=bundle.task_type, batch_size=hp["batch_size_requested"], epochs=hp["epochs"],
             lr=args.lr, seed=task["seed"], num_workers=0, optimizer_name=args.optimizer,
-            weight_decay=args.weight_decay, sgd_momentum=args.momentum)))
+            weight_decay=args.weight_decay, sgd_momentum=args.momentum,
+            benchmark_diagnostics=args.benchmark_diagnostics)))
     test_loader = make_loader(bundle.test_dataset, min(1024, hp["batch_size_requested"]), False, task["seed"], 0)
     logits, targets, inference = predict_logits(model, test_loader)
     if not np.isfinite(logits).all():
@@ -241,6 +254,9 @@ def run_task(task, bundle, args):
     metrics, notes = evaluate_from_probabilities(targets, probabilities, task_type=bundle.task_type,
                                                 num_classes=bundle.num_classes, threshold=.5)
     row.update(metrics, inference_time_seconds=inference, status="success", metric_notes=notes)
+    if args.benchmark_diagnostics:
+        first_batch, _ = next(iter(test_loader))
+        row.update(benchmark_forward_batch(model, first_batch))
     row["total_training_seconds_including_setup"] = row["training_time_seconds"] + row.get("setup_time_seconds", 0.)
     return row
 
@@ -282,6 +298,8 @@ def main(argv=None):
         save_json(manifest_path, manifest)
     print(f"{len(tasks)} prespecified tasks. Output: {output}", flush=True)
     print("Privacy scope: one training run conditional on fixed public cohort/partitions/sizes. Test evaluation is public.", flush=True)
+    if args.benchmark_diagnostics:
+        print("WARNING: diagnostic losses, clipping fractions and test latency are PUBLIC-BENCHMARK outputs, not covered by training DP. Do not use this flag on confidential data.", flush=True)
     if args.dry_run:
         pd.DataFrame(tasks).to_csv(output / "experiment_plan.csv", index=False)
         print("Dry run complete; no model trained.")

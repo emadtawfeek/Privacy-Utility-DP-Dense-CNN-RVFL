@@ -50,6 +50,7 @@ class PrivateTrainResult:
     accountant_history: list
     rdp_orders: list
     public_reference_size: int
+    diagnostic_history: list | None = None
     adjacency: str = "add_remove_one"
     sampling: str = "poisson"
     checkpoint_selection: str = "final_fixed_epoch"
@@ -62,6 +63,7 @@ def train_private_model(
     sgd_momentum=0.9, lr_schedule=None, weight_decay=0.0,
     accountant_name="rdp", epsilon_tolerance=1e-4,
     public_reference_size=None,
+    benchmark_diagnostics=False,
 ):
     """Explicit Poisson draws, exact-step calibration, no data-dependent selection.
 
@@ -129,10 +131,13 @@ def train_private_model(
     setup_seconds = time.perf_counter() - setup_start
     started = time.perf_counter()
     steps = empty_batches = 0
+    diagnostic_history = [] if benchmark_diagnostics else None
     try:
         for epoch in range(epochs):
             apply_lr_schedule(private_optimizer, lr, lr_schedule, epoch)
             private_model.train()
+            loss_sum = observed_examples = clipped_examples = 0
+            norm_sum = 0.0
             for features, targets in private_loader:
                 private_optimizer.zero_grad(set_to_none=True)
                 if len(targets) == 0:
@@ -148,8 +153,28 @@ def train_private_model(
                     if not torch.isfinite(loss):
                         raise FloatingPointError("Non-finite loss; experiment invalid.")
                     loss.backward()
+                    if benchmark_diagnostics:
+                        with torch.no_grad():
+                            squared = torch.zeros(len(targets), device=features.device)
+                            for parameter in parameters:
+                                samples = parameter.grad_sample
+                                if isinstance(samples, list):
+                                    samples = torch.cat(samples, dim=0)
+                                squared += samples.reshape(len(targets), -1).square().sum(dim=1)
+                            norms = squared.sqrt()
+                            clipped_examples += int((norms > max_grad_norm).sum())
+                            norm_sum += float(norms.sum())
+                            loss_sum += float(loss.detach()) * len(targets)
+                            observed_examples += len(targets)
                 private_optimizer.step()
                 steps += 1
+            if benchmark_diagnostics:
+                diagnostic_history.append({"epoch": epoch + 1,
+                    "training_loss_mean": loss_sum / observed_examples if observed_examples else None,
+                    "poisson_record_draws": observed_examples,
+                    "preclip_gradient_l2_mean": norm_sum / observed_examples if observed_examples else None,
+                    "clipping_fraction": clipped_examples / observed_examples if observed_examples else None,
+                    "clipped_examples": clipped_examples})
         elapsed = time.perf_counter() - started
         history = [list(item) for item in engine.accountant.history]
         if steps != planned_steps or sum(item[2] for item in history) != steps:
@@ -171,6 +196,7 @@ def train_private_model(
             calibration_epsilon=calibrated_epsilon, calibration_tolerance=epsilon_tolerance,
             setup_time_seconds=setup_seconds, accountant_history=history, rdp_orders=list(orders or []),
             public_reference_size=reference_size,
+            diagnostic_history=diagnostic_history,
         )
     finally:
         private_model.to_standard_module()

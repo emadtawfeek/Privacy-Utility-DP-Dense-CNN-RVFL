@@ -14,6 +14,7 @@ from torch.utils.data import DataLoader, Dataset
 class TrainResult:
     training_time_seconds: float
     epochs_completed: int
+    diagnostic_history: list | None = None
 
 
 def make_loader(
@@ -108,6 +109,7 @@ def train_nonprivate_model(
     lr_schedule: dict | None = None,
     weight_decay: float = 0.0,
     sgd_momentum: float = 0.0,
+    benchmark_diagnostics: bool = False,
 ) -> TrainResult:
     """Train a model without differential privacy."""
     loader = make_loader(train_dataset, batch_size, True, seed, num_workers)
@@ -115,9 +117,11 @@ def train_nonprivate_model(
     optimizer = _make_optimizer(model, lr, optimizer_name, weight_decay, sgd_momentum)
     start = time.perf_counter()
     epochs_completed = 0
+    diagnostic_history = [] if benchmark_diagnostics else None
     for epoch in range(epochs):
         apply_lr_schedule(optimizer, lr, lr_schedule, epoch)
         model.train()
+        loss_sum = examples = 0
         for features, targets in loader:
             optimizer.zero_grad(set_to_none=True)
             logits = model(features)
@@ -127,8 +131,15 @@ def train_nonprivate_model(
                 loss = criterion(logits, targets.long())
             loss.backward()
             optimizer.step()
+            if benchmark_diagnostics:
+                loss_sum += float(loss.detach()) * len(targets)
+                examples += len(targets)
+        if benchmark_diagnostics:
+            diagnostic_history.append({"epoch": epoch + 1, "training_loss_mean": loss_sum / examples,
+                                       "examples_seen": examples})
         epochs_completed = epoch + 1
     return TrainResult(
         training_time_seconds=time.perf_counter() - start,
         epochs_completed=epochs_completed,
+        diagnostic_history=diagnostic_history,
     )

@@ -8,7 +8,10 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-METRICS = ["accuracy", "precision", "recall", "f1", "auroc", "auprc", "training_time_seconds"]
+METRICS = ["accuracy", "precision", "recall", "f1", "auroc", "auprc", "training_time_seconds",
+           "total_training_seconds_including_setup", "inference_time_seconds",
+           "estimated_forward_macs_per_record", "parameter_storage_bytes",
+           "forward_milliseconds_per_record", "majority_baseline_test_accuracy"]
 
 
 def _interval(values):
@@ -46,6 +49,8 @@ def write_analysis(results, output):
     summary = []
     for values, group in data.groupby(keys, dropna=False):
         for metric in METRICS:
+            if metric not in group:
+                continue
             n, mean, sd, low, high = _interval(group[metric])
             summary.append(dict(zip(keys, values)) | {
                 "metric": metric, "n_runs": n, "mean": mean, "sd": sd,
@@ -113,11 +118,11 @@ def write_figures(results, output):
                     ax.errorbar(values.index, values["mean"], yerr=values["std"], marker="o", capsize=2, label=name)
                 else:
                     ax.plot(values.index, values["mean"], marker="o", label=name)
-            ax.set(xscale="log", xlabel="Target epsilon", ylabel=metric.replace("_", " "),
-                   title=f"{dataset.upper()}  |  mean and SD across training seeds")
+            ax.set(xscale="log", xlabel="Target epsilon (private training)", ylabel=metric.replace("_", " "),
+                   title=f"{dataset.upper()} PRIVATE | mean and SD across training seeds")
             ax.grid(alpha=.2)
             ax.legend(fontsize=7, loc="best")
             fig.text(.01, .01, "DPELM: pure DP. DP-SGD: approximate DP; see privacy_protocol.csv.", fontsize=7)
             fig.tight_layout(rect=(0, .03, 1, 1))
-            fig.savefig(output / f"{dataset}_{metric}.png", dpi=180)
+            fig.savefig(output / f"{dataset}_private_{metric}.png", dpi=180)
             plt.close(fig)

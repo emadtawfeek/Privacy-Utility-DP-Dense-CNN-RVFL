@@ -1,8 +1,8 @@
-# Datasets and generated experiment outputs
-/data/
+# Generated experiment outputs (public benchmark datasets are tracked)
 /outputs*/
 /results*/
 /dpsgd-original/
+/reviewer_sources/
 *.pt
 *.pth
 

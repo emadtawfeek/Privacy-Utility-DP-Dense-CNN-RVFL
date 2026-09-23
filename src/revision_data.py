@@ -86,6 +86,8 @@ def load_revision_bundle(dataset, data_dir, split_seed=2026, max_train=None, max
         validation = Subset(full, val_idx.tolist())
         test = Subset(full, test_idx.tolist())
         shape, task_type, classes = (features.shape[1],), "binary", 2
+        train_targets = labels[train_idx].astype(np.int64)
+        test_targets = labels[test_idx].astype(np.int64)
         prep = {"version": PREPROCESSING_VERSION, "numeric_bounds": NUMERIC_BOUNDS[dataset],
                 "categories": CATEGORIES[dataset], "feature_names": names,
                 "fit_on_training_records": False, "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
@@ -107,6 +109,8 @@ def load_revision_bundle(dataset, data_dir, split_seed=2026, max_train=None, max
         test = Subset(test_full, test_idx.tolist())
         shape = (1, 28, 28) if dataset == "mnist" else (3, 32, 32)
         task_type, classes = "multiclass", 10
+        train_targets = np.asarray(full.targets, dtype=np.int64)[train_idx]
+        test_targets = np.asarray(test_full.targets, dtype=np.int64)[test_idx]
         def content_digest(ds):
             digest = hashlib.sha256()
             digest.update(np.asarray(ds.data).tobytes())
@@ -114,6 +118,9 @@ def load_revision_bundle(dataset, data_dir, split_seed=2026, max_train=None, max
             return digest.hexdigest()
         prep = {"version": "torchvision_totensor_fixed_0_1", "fit_on_training_records": False,
                 "train_content_sha256": content_digest(full), "test_content_sha256": content_digest(test_full)}
+    train_counts = np.bincount(train_targets, minlength=classes)
+    test_counts = np.bincount(test_targets, minlength=classes)
+    majority_class = int(np.argmax(train_counts))
     summary = {
         "dataset": dataset, "split_seed": split_seed, "split_method": "public_fixed_unstratified_permutation",
         "train_size": len(train), "validation_size": len(validation), "test_size": len(test),
@@ -121,6 +128,10 @@ def load_revision_bundle(dataset, data_dir, split_seed=2026, max_train=None, max
         "validation_indices_sha256": _digest_indices(val_idx), "preprocessing": prep,
         "validation_use": "none", "evaluation_scope": "public_benchmark_test_records",
         "privacy_scope": "single_training_run_conditional_on_fixed_public_cohort_partition_and_sizes",
+        "train_class_counts": train_counts.tolist(), "test_class_counts": test_counts.tolist(),
+        "majority_class_train": majority_class,
+        "majority_baseline_test_accuracy": float(test_counts[majority_class] / len(test_targets)),
+        "class_count_scope": "public_benchmark_only_not_a_private_data_release",
     }
     if len(train) == 0 or len(test) == 0:
         raise ValueError("Empty training or test partition.")
