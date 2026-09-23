@@ -1,8 +1,8 @@
 {
   "files": {
     ".gitattributes": {
-      "bytes": 162,
-      "sha256": "e7040a6333f2815012c9e058a74751d396542903a9e3bb025ea84ebcdac7078c"
+      "bytes": 182,
+      "sha256": "2695a9ac8f54b8aa11d1f5f93d8a2c3ee824189db048e919a90b771355d3162f"
     },
     ".gitignore": {
       "bytes": 398,
@@ -13,16 +13,16 @@
       "sha256": "81e57316f28a8a7065697498e13ce9cf738223720ac150377b75b24402b5f310"
     },
     "README.md": {
-      "bytes": 1982,
-      "sha256": "626042f0ece6b5e881846f2da80a7fbc33cb9d5c5155ff99b6cf9ac014017fc3"
+      "bytes": 2061,
+      "sha256": "6dfd0848b39cbc42bac02366839b1e2c720aa16a86d754809760d6a518aba37c"
     },
     "REVIEWER_REVISION.md": {
       "bytes": 11305,
       "sha256": "0e8cf7ae3ffea12320055f5831895105625bf7afcaa818c11150e700ad0869ec"
     },
     "RUN_OTHER_DEVICE.md": {
-      "bytes": 5006,
-      "sha256": "67f55d046415303be1784b4a2fa2a8e7b59efd90678e4fd891bb7df26d119f2a"
+      "bytes": 5259,
+      "sha256": "45df87fd6f6a26ba5aa7c8d89de36a9863e80d4184b9f22f113f971b37d28d40"
     },
     "TECHNICAL_REPORT.md": {
       "bytes": 12148,
@@ -231,6 +231,18 @@
     "verify_transfer.py": {
       "bytes": 2473,
       "sha256": "9c3fb8a297686671383cbf6b2b79425674975da42ebd3da31b631ff58886c1cd"
+    },
+    "wheels/README.md": {
+      "bytes": 1129,
+      "sha256": "d33ea976369f3e1e192763418f8ef5bf7cd5fdd823446e6412ca70a961eca66c"
+    },
+    "wheels/torchcsprng-0.3.0a0+13e04cd-cp312-cp312-win_amd64.whl": {
+      "bytes": 165641,
+      "sha256": "74d0a416a0d2b8d88ed699d8ed4ac757d9c64d52f20e317130b9871941e7f2c9"
+    },
+    "wheels/torchcsprng-LICENSE.txt": {
+      "bytes": 1515,
+      "sha256": "191ed86f36872623755d9ac7c6f70cee6b505b96e6f64ace309573913317a5b5"
     }
   }
 }

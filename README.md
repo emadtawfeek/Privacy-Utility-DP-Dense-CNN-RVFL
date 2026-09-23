@@ -17,6 +17,7 @@ records R3 additions and remaining manuscript work.
 - `tests/`: protocol and R3 regression tests.
 - `data/`: public-benchmark CSVs and extracted MNIST/CIFAR-10 files; no downloader needed.
 - `DATASETS.md`: data inventory and scope notes.
+- `wheels/`: tested Windows/Python 3.12 secure-RNG wheel and upstream license.
 - Reviewer PDFs and the referenced DP-ELM PDF are retained privately by the
   author; they are not part of this public repository.
 - `verify_transfer.py` and `transfer_manifest.json`: cross-device file integrity.

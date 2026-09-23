@@ -34,8 +34,15 @@ python -m unittest discover -s tests -p 'test_*.py' -v
 On Linux/macOS activate with `source .venv/bin/activate`; use the corresponding
 Python 3.12 command to create it. `torchcsprng` must additionally be installed
 as a binary **compatible with that device's PyTorch/OS/Python combination** for
-secure Opacus private training. It is not pinned here because the locally
-verified Windows wheel is not portable. Test availability before a full run:
+secure Opacus private training. A tested Windows x64/Python 3.12 wheel is in
+`wheels/` with provenance and license; it is not portable to other platforms
+and may not match a different PyTorch binary. On a matching Windows laptop:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --no-deps ".\wheels\torchcsprng-0.3.0a0+13e04cd-cp312-cp312-win_amd64.whl"
+```
+
+Test availability before a full run:
 
 ```powershell
 python -c "import sys; sys.path.insert(0, 'src'); from dp_accounting import validate_secure_rng_available; validate_secure_rng_available(); print('Secure RNG available')"
